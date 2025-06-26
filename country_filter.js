@@ -91,35 +91,61 @@
     return true;
   }
   
-  // API FUNCTIONS
+  // API FUNCTIONS with CORS fallback
   function fetchCountries() {
     return new Promise(function(resolve, reject) {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', API_BASE, true);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            try {
-              var response = JSON.parse(xhr.responseText);
-              if (response && Array.isArray(response.countries)) {
-                countriesArray = response.countries;
-                resolve(countriesArray);
-              } else {
-                reject(new Error('Invalid response format'));
-              }
-            } catch (error) {
-              reject(new Error('Failed to parse response: ' + error.message));
-            }
-          } else {
-            reject(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
-          }
+      // First try with JSONP to avoid CORS
+      var script = document.createElement('script');
+      var callbackName = 'countryCallback_' + Date.now();
+      
+      window[callbackName] = function(data) {
+        delete window[callbackName];
+        document.head.removeChild(script);
+        
+        if (data && Array.isArray(data.countries)) {
+          countriesArray = data.countries;
+          resolve(countriesArray);
+        } else {
+          // Fallback to hardcoded countries
+          log('⚠️ API returned invalid data, using fallback countries');
+          useHardcodedCountries();
+          resolve(countriesArray);
         }
       };
-      xhr.onerror = function() {
-        reject(new Error('Network error'));
+      
+      script.onerror = function() {
+        delete window[callbackName];
+        document.head.removeChild(script);
+        log('⚠️ API call failed, using hardcoded countries');
+        useHardcodedCountries();
+        resolve(countriesArray);
       };
-      xhr.send();
+      
+      script.src = API_BASE + '?callback=' + callbackName;
+      document.head.appendChild(script);
+      
+      // Timeout fallback
+      setTimeout(function() {
+        if (window[callbackName]) {
+          delete window[callbackName];
+          if (script.parentNode) {
+            document.head.removeChild(script);
+          }
+          log('⚠️ API timeout, using hardcoded countries');
+          useHardcodedCountries();
+          resolve(countriesArray);
+        }
+      }, 5000);
     });
+  }
+  
+  function useHardcodedCountries() {
+    countriesArray = [
+      { code: 'PT', name: 'Portugal', database_id: '1', id: '1' },
+      { code: 'ES', name: 'Spain', database_id: '2', id: '2' },
+      { code: 'FR', name: 'France', database_id: '3', id: '3' }
+    ];
+    log('✅ Loaded ' + countriesArray.length + ' hardcoded countries');
   }
   
   // FILTERING FUNCTIONS
