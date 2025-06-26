@@ -1,4 +1,4 @@
-// Country Filter System with Webflow Filtering Support
+// Country Filter System with Webflow Filtering Support - FIXED VERSION
 (function() {
   'use strict';
   
@@ -14,6 +14,11 @@
   var CACHE_KEY = 'webflow_countries_cache';
   var CACHE_DURATION = 6 * 60 * 60 * 1000;
   var SELECTED_COUNTRY_KEY = 'selected_country';
+  
+  // CRITICAL FIX: Add observer management
+  var observerInstance = null;
+  var isPopulating = false;
+  var populateTimeout = null;
   
   function isMobileView() {
     return window.innerWidth <= 568;
@@ -209,54 +214,73 @@
     });
   }
 
-  // NEW: Check if element is currently visible (not hidden by Webflow filtering)
+  // IMPROVED: More robust visibility checking
   function isElementVisibleInWebflow(element) {
-    debugLog('Checking visibility for element', element);
+    if (!element || !element.nodeType || element.nodeType !== 1) {
+      return false;
+    }
     
     // Check if element itself is hidden
     if (element.style.display === 'none') {
-      debugLog('Element hidden by inline style');
       return false;
     }
     
     // Check if element has been filtered out by Webflow
     if (element.classList.contains('w-condition-invisible')) {
-      debugLog('Element has w-condition-invisible class');
       return false;
     }
     
     // Check computed style
     var computedStyle = window.getComputedStyle(element);
     if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
-      debugLog('Element hidden by computed style', { display: computedStyle.display, visibility: computedStyle.visibility });
       return false;
     }
     
-    // Check if parent containers are hidden by Webflow
+    // Check if parent containers are hidden by Webflow (limited depth to prevent performance issues)
     var parent = element.parentElement;
     var depth = 0;
-    while (parent && parent !== document.body && depth < 10) {
+    while (parent && parent !== document.body && depth < 5) {
       var parentStyle = window.getComputedStyle(parent);
       if (parentStyle.display === 'none' || parent.classList.contains('w-condition-invisible')) {
-        debugLog('Parent element hidden', { parent: parent.className, display: parentStyle.display });
         return false;
       }
       parent = parent.parentElement;
       depth++;
     }
     
-    debugLog('Element is visible');
     return true;
   }
+
+  // CRITICAL FIX: Add protection against recursive calls
   function populateCountryFilter() {
+    // Prevent recursive calls
+    if (isPopulating) {
+      debugLog('populateCountryFilter already running, skipping');
+      return;
+    }
+    
+    isPopulating = true;
     log('🚀 populateCountryFilter called');
+    
+    // Clear any existing timeout
+    if (populateTimeout) {
+      clearTimeout(populateTimeout);
+    }
+    
     var selects = document.querySelectorAll('.country-filter-dropdown');
     log(`Init: Found ${selects.length} dropdowns`);
     
     if (selects.length === 0) {
       var filterElements = document.querySelectorAll('[data-country-filter]');
       log(`Init: Found ${filterElements.length} filter containers`);
+      isPopulating = false;
       return;
+    }
+    
+    // DISCONNECT OBSERVER during population to prevent loops
+    if (observerInstance) {
+      observerInstance.disconnect();
+      debugLog('Observer disconnected during population');
     }
     
     selects.forEach(function(select) {
@@ -275,7 +299,7 @@
           }
         }
         
-        // NEW: Get countries that are actually present in currently visible articles
+        // Get countries that are actually present in currently visible articles
         var allArticles = Array.from(document.querySelectorAll('[data-country-id]:not(option)'));
         debugLog(`Found ${allArticles.length} total articles with country data`);
         
@@ -285,20 +309,16 @@
         var visibleCountryIds = new Set(
           visibleArticles.map(function(article) {
             var countryId = article.getAttribute('data-country-id');
-            debugLog(`Article country ID: ${countryId}`);
             return countryId;
           }).filter(Boolean)
         );
         
         log(`Found ${visibleCountryIds.size} unique countries in ${visibleArticles.length} visible articles`);
-        debugLog('Visible country IDs:', Array.from(visibleCountryIds));
         
         // Filter countries to only show those present in visible articles
         var availableCountries = countriesArray.filter(function(country) {
           var countryDbId = country.database_id || country.id;
-          var isAvailable = visibleCountryIds.has(countryDbId);
-          debugLog(`Country ${country.name} (ID: ${countryDbId}) available: ${isAvailable}`);
-          return isAvailable;
+          return visibleCountryIds.has(countryDbId);
         });
         
         // If no countries found in visible articles, show all (fallback)
@@ -326,7 +346,6 @@
               option.textContent = country.name;
               option.setAttribute('data-country-id', country.database_id || country.id);
               select.appendChild(option);
-              debugLog(`Added option: ${country.name} (${country.code})`);
             }
           });
         });
@@ -336,18 +355,10 @@
         var savedCountry = localStorage.getItem(SELECTED_COUNTRY_KEY);
         var selectedCountry = countryFromUrl || savedCountry;
         
-        debugLog('Country selection logic:', {
-          countryFromUrl: countryFromUrl,
-          savedCountry: savedCountry,
-          selectedCountry: selectedCountry
-        });
-        
-        // NEW: Verify selected country is available in current view
+        // Verify selected country is available in current view
         var selectedCountryAvailable = availableCountries.some(function(country) {
           return country.code === selectedCountry;
         });
-        
-        debugLog(`Selected country ${selectedCountry} available: ${selectedCountryAvailable}`);
         
         if (!selectedCountry || !selectedCountryAvailable) {
           if (availableCountries.length > 0) {
@@ -359,7 +370,6 @@
         if (selectedCountry) {
           selects.forEach(function(select) {
             select.value = selectedCountry;
-            debugLog(`Set select value to: ${selectedCountry}`);
           });
           
           localStorage.setItem(SELECTED_COUNTRY_KEY, selectedCountry);
@@ -395,12 +405,19 @@
         selects.forEach(function(select) {
           select.innerHTML = '<option value="">Error loading countries</option>';
         });
+      })
+      .finally(function() {
+        // RECONNECT OBSERVER after a delay to prevent immediate re-triggering
+        populateTimeout = setTimeout(function() {
+          isPopulating = false;
+          reconnectObserver();
+          debugLog('Population completed, observer reconnected');
+        }, 1000); // 1 second delay before reconnecting
       });
   }
   
-  // UPDATED: Apply filter only to currently visible articles
+  // Apply filter only to currently visible articles
   function applyCountryFilter(countryId) {
-    // Get all articles, but only filter those visible in Webflow
     var allArticles = Array.from(document.querySelectorAll('[data-country-id]:not(option)'));
     var allRegions = Array.from(document.querySelectorAll('[data-region-country-id]:not(option)'));
     
@@ -410,7 +427,6 @@
     log(`Filter: ${visibleArticles.length}/${allArticles.length} visible articles, ${visibleRegions.length}/${allRegions.length} visible regions for ID ${countryId}`);
     
     if (!countryId) {
-      // Show all visible articles
       visibleArticles.forEach(function(article) {
         article.classList.remove('country-filtered');
         article.style.display = '';
@@ -424,7 +440,6 @@
     
     var visible = 0, hidden = 0;
     
-    // Only filter articles that are currently visible in Webflow
     visibleArticles.forEach(function(article) {
       var articleCountryId = article.getAttribute('data-country-id');
       if (articleCountryId === countryId) {
@@ -517,84 +532,102 @@
     populateCountryFilter();
   }
   
-  // NEW: Watch for Webflow filter changes - WITH THROTTLING TO PREVENT LOOPS
-  function watchWebflowFilters() {
+  // COMPLETELY REWRITTEN: Safe observer that won't cause loops
+  function createWebflowWatcher() {
     log('🔍 Setting up Webflow filter watcher');
-    var isRefreshing = false;
-    var refreshTimeout;
     
-    // Throttled refresh function
-    function throttledRefresh() {
-      if (isRefreshing) {
-        debugLog('Refresh already in progress, skipping');
+    // Track what we've already seen to prevent duplicate processing
+    var lastKnownVisibleArticles = new Set();
+    var debounceTimeout;
+    
+    function checkForChanges() {
+      if (isPopulating) {
+        debugLog('Skipping change check - population in progress');
         return;
       }
       
-      clearTimeout(refreshTimeout);
-      refreshTimeout = setTimeout(function() {
-        if (isRefreshing) return;
+      var currentVisible = Array.from(document.querySelectorAll('[data-country-id]:not(option)'))
+        .filter(isElementVisibleInWebflow)
+        .map(function(el) { return el.getAttribute('data-country-id'); });
+      
+      var currentVisibleSet = new Set(currentVisible);
+      
+      // Check if the visible articles have actually changed
+      var hasChanged = currentVisibleSet.size !== lastKnownVisibleArticles.size ||
+        !Array.from(currentVisibleSet).every(function(id) { return lastKnownVisibleArticles.has(id); });
+      
+      if (hasChanged) {
+        log('🔄 Article visibility changed, refreshing country options');
+        debugLog('Previous visible:', Array.from(lastKnownVisibleArticles));
+        debugLog('Current visible:', Array.from(currentVisibleSet));
         
-        isRefreshing = true;
-        log('🔄 Webflow filter detected, refreshing country options');
+        lastKnownVisibleArticles = currentVisibleSet;
         populateCountryFilter();
-        
-        setTimeout(function() {
-          isRefreshing = false;
-          debugLog('Refresh cooldown completed');
-        }, 2000); // 2 second cooldown
-      }, 500); // 500ms delay
+      }
     }
     
-    // Create observer to watch for changes in article visibility
-    var observer = new MutationObserver(function(mutations) {
-      var shouldRefresh = false;
-      var changedElements = [];
+    function debouncedCheck() {
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(checkForChanges, 1000); // 1 second debounce
+    }
+    
+    // Create new observer with very specific targeting
+    observerInstance = new MutationObserver(function(mutations) {
+      if (isPopulating) {
+        return; // Don't process during population
+      }
+      
+      var relevantChange = false;
       
       mutations.forEach(function(mutation) {
+        // Only care about style and class changes that might affect visibility
         if (mutation.type === 'attributes' && 
-            (mutation.attributeName === 'style' || 
-             mutation.attributeName === 'class')) {
+            (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
           var target = mutation.target;
-          if (target.hasAttribute && target.hasAttribute('data-country-id')) {
-            shouldRefresh = true;
-            changedElements.push(target.className || target.tagName);
-          }
-        }
-        
-        if (mutation.type === 'childList') {
-          mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1 && node.hasAttribute && node.hasAttribute('data-country-id')) {
-              shouldRefresh = true;
-              changedElements.push('added: ' + (node.className || node.tagName));
+          
+          // Only trigger if the changed element has country data or is a parent container
+          if (target && target.nodeType === 1) {
+            if (target.hasAttribute('data-country-id') || 
+                target.querySelector('[data-country-id]')) {
+              relevantChange = true;
             }
-          });
+          }
         }
       });
       
-      if (shouldRefresh) {
-        debugLog('MutationObserver detected changes:', changedElements);
-        throttledRefresh();
+      if (relevantChange) {
+        debugLog('Relevant DOM change detected');
+        debouncedCheck();
       }
     });
     
-    // Watch the entire document for changes - BUT EXCLUDE THE COUNTRY FILTER ITSELF
-    var filterContainer = document.querySelector('[data-country-filter]');
-    var observeTarget = filterContainer ? document.body : document.body;
-    
-    observer.observe(observeTarget, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class']
-    });
-    
-    debugLog('MutationObserver attached to', observeTarget);
+    return observerInstance;
+  }
+  
+  function reconnectObserver() {
+    if (observerInstance) {
+      debugLog('Reconnecting observer');
+      observerInstance.observe(document.body, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+      });
+    }
+  }
+  
+  function watchWebflowFilters() {
+    createWebflowWatcher();
+    reconnectObserver();
     
     // Also watch for Webflow's filter events if available
     if (window.Webflow && window.Webflow.push) {
       window.Webflow.push(function() {
         log('📡 Webflow.push event detected');
-        throttledRefresh();
+        if (!isPopulating) {
+          setTimeout(function() {
+            populateCountryFilter();
+          }, 500);
+        }
       });
     }
   }
@@ -613,7 +646,6 @@
   function initializeCountryFilter() {
     log('🚀 Country filter starting...');
     
-    // Quick element check
     var filterElements = document.querySelectorAll('[data-country-filter]');
     var dropdownElements = document.querySelectorAll('.country-filter-dropdown');
     var articleElements = document.querySelectorAll('[data-country-id]:not(option)');
@@ -622,7 +654,7 @@
     
     populateCountryFilter();
     handleCountryChange();
-    watchWebflowFilters(); // NEW: Watch for Webflow changes
+    watchWebflowFilters();
     setInterval(refreshCountryCache, CACHE_DURATION);
   }
   
@@ -641,6 +673,46 @@
   // Global functions
   window.refreshCountries = refreshCountryCache;
   window.applyCountryFilter = applyCountryFilter;
+  
+  // UPDATED: Enhanced debug function
+  window.debugCountry = function() {
+    var selects = document.querySelectorAll('.country-filter-dropdown');
+    var articles = document.querySelectorAll('[data-country-id]:not(option)');
+    var visibleArticles = Array.from(articles).filter(isElementVisibleInWebflow);
+    
+    console.log('🔍 COUNTRY FILTER DEBUG:', {
+      isPopulating: isPopulating,
+      observerConnected: observerInstance && observerInstance.constructor.name === 'MutationObserver',
+      dropdowns: selects.length,
+      totalArticles: articles.length,
+      visibleArticles: visibleArticles.length,
+      selectedCountry: localStorage.getItem(SELECTED_COUNTRY_KEY),
+      firstDropdownValue: selects[0] ? selects[0].value : 'none',
+      firstDropdownOptions: selects[0] ? selects[0].options.length : 0,
+      pageURL: window.location.href,
+      urlCountryParam: new URLSearchParams(window.location.search).get('country')
+    });
+    
+    if (visibleArticles.length > 0) {
+      console.log('📝 Sample visible articles:', visibleArticles.slice(0, 3).map(function(article) {
+        return {
+          countryId: article.getAttribute('data-country-id'),
+          className: article.className,
+          display: window.getComputedStyle(article).display
+        };
+      }));
+    }
+    
+    if (selects[0]) {
+      console.log('📋 Dropdown options:', Array.from(selects[0].options).map(function(option) {
+        return {
+          value: option.value,
+          text: option.textContent,
+          countryId: option.getAttribute('data-country-id')
+        };
+      }));
+    }
+  };
   
   // Force country selector z-index
   window.forceCountrySelectorLowZIndex = function() {
@@ -688,46 +760,6 @@
         container.style.setProperty('isolation', 'isolate', 'important');
       }
     });
-  };
-  
-  // Enhanced debug function with comprehensive info
-  window.debugCountry = function() {
-    var selects = document.querySelectorAll('.country-filter-dropdown');
-    var articles = document.querySelectorAll('[data-country-id]:not(option)');
-    var visibleArticles = Array.from(articles).filter(isElementVisibleInWebflow);
-    
-    console.log('🔍 COUNTRY FILTER DEBUG:', {
-      dropdowns: selects.length,
-      totalArticles: articles.length,
-      visibleArticles: visibleArticles.length,
-      selectedCountry: localStorage.getItem(SELECTED_COUNTRY_KEY),
-      firstDropdownValue: selects[0] ? selects[0].value : 'none',
-      firstDropdownOptions: selects[0] ? selects[0].options.length : 0,
-      pageURL: window.location.href,
-      urlCountryParam: new URLSearchParams(window.location.search).get('country')
-    });
-    
-    // Show sample of visible articles
-    if (visibleArticles.length > 0) {
-      console.log('📝 Sample visible articles:', visibleArticles.slice(0, 3).map(function(article) {
-        return {
-          countryId: article.getAttribute('data-country-id'),
-          className: article.className,
-          display: window.getComputedStyle(article).display
-        };
-      }));
-    }
-    
-    // Show dropdown contents
-    if (selects[0]) {
-      console.log('📋 Dropdown options:', Array.from(selects[0].options).map(function(option) {
-        return {
-          value: option.value,
-          text: option.textContent,
-          countryId: option.getAttribute('data-country-id')
-        };
-      }));
-    }
   };
   
 })();
