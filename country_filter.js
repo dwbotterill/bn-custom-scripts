@@ -445,7 +445,7 @@
   window.refreshCountries = refreshCountryCache;
   window.applyCountryFilter = applyCountryFilter;
   
-  // Force country selector z-index
+  // 🔧 FIXED: Force country selector z-index - EXCLUDING navigation-header
   window.forceCountrySelectorLowZIndex = function() {
     var selects = document.querySelectorAll('.country-filter-dropdown');
     
@@ -457,6 +457,14 @@
       var depth = 0;
       
       while (parent && depth < 5) {
+        // 🔧 CRITICAL FIX: Skip navigation-header to preserve its z-index!
+        if (parent.classList && parent.classList.contains('navigation-header')) {
+          console.log('🚫 Skipping navigation-header - preserving z-index');
+          parent = parent.parentNode;
+          depth++;
+          continue;
+        }
+        
         var computedStyle = window.getComputedStyle(parent);
         var position = computedStyle.position;
         
@@ -480,7 +488,8 @@
       overlay.style.setProperty('z-index', '1', 'important');
       
       var container = overlay.parentNode;
-      if (container) {
+      // 🔧 ALSO skip navigation-header for overlays
+      if (container && !container.classList.contains('navigation-header')) {
         container.style.setProperty('z-index', '1', 'important');
         container.style.setProperty('isolation', 'isolate', 'important');
       }
