@@ -89,14 +89,7 @@
   }
 }
 
-/* Enhanced content hiding classes with MAXIMUM specificity */
-html body.hide-context .context-box,
-html body.hide-context div.context-box,
-html body.hide-context .article-content .context-box,
-html body.hide-context .context-box[class*="context"],
-body.hide-context .context-box,
-body.hide-context div.context-box,
-body.hide-context .article-content .context-box,
+/* Content hiding classes */
 .hide-context .context-box {
   display: none !important;
   visibility: hidden !important;
@@ -109,14 +102,6 @@ body.hide-context .article-content .context-box,
   border: none !important;
 }
 
-/* Enhanced language hiding with MAXIMUM specificity */
-html body.hide-language .language-box,
-html body.hide-language div.language-box,
-html body.hide-language .article-content .language-box,
-html body.hide-language .language-box[class*="language"],
-body.hide-language .language-box,
-body.hide-language div.language-box,
-body.hide-language .article-content .language-box,
 .hide-language .language-box {
   display: none !important;
   visibility: hidden !important;
@@ -129,11 +114,7 @@ body.hide-language .article-content .language-box,
   border: none !important;
 }
 
-/* Toggle Button Styling - MAXIMUM specificity */
-html body #context-checkbox,
-html body #language-checkbox,
-body #context-checkbox,
-body #language-checkbox,
+/* Toggle Button Styling */
 #context-checkbox,
 #language-checkbox {
   cursor: pointer !important;
@@ -154,11 +135,7 @@ body #language-checkbox,
   box-sizing: border-box !important;
 }
 
-/* Slider knob - MAXIMUM specificity */
-html body #context-checkbox::before,
-html body #language-checkbox::before,
-body #context-checkbox::before,
-body #language-checkbox::before,
+/* Slider knob */
 #context-checkbox::before,
 #language-checkbox::before {
   content: '' !important;
@@ -174,74 +151,29 @@ body #language-checkbox::before,
   z-index: 1 !important;
 }
 
-/* Context toggle ON state - MAXIMUM specificity */
-html body #context-checkbox[data-checked="true"],
-body #context-checkbox[data-checked="true"],
+/* Context toggle ON state */
 #context-checkbox[data-checked="true"] {
   background-color: #007bff !important;
   border-color: #0056b3 !important;
 }
 
-html body #context-checkbox[data-checked="true"]::before,
-body #context-checkbox[data-checked="true"]::before,
 #context-checkbox[data-checked="true"]::before {
   transform: translateX(26px) !important;
   background-color: white !important;
 }
 
-/* Language toggle ON state - MAXIMUM specificity */
-html body #language-checkbox[data-checked="true"],
-body #language-checkbox[data-checked="true"],
+/* Language toggle ON state */
 #language-checkbox[data-checked="true"] {
   background-color: #28a745 !important;
   border-color: #1e7e34 !important;
 }
 
-html body #language-checkbox[data-checked="true"]::before,
-body #language-checkbox[data-checked="true"]::before,
 #language-checkbox[data-checked="true"]::before {
   transform: translateX(26px) !important;
   background-color: white !important;
 }
 
-/* OFF state (default) - MAXIMUM specificity */
-html body #context-checkbox[data-checked="false"],
-html body #context-checkbox:not([data-checked="true"]),
-html body #language-checkbox[data-checked="false"],
-html body #language-checkbox:not([data-checked="true"]),
-body #context-checkbox[data-checked="false"],
-body #context-checkbox:not([data-checked="true"]),
-body #language-checkbox[data-checked="false"],
-body #language-checkbox:not([data-checked="true"]),
-#context-checkbox[data-checked="false"],
-#context-checkbox:not([data-checked="true"]),
-#language-checkbox[data-checked="false"],
-#language-checkbox:not([data-checked="true"]) {
-  background-color: #ccc !important;
-  border-color: #bbb !important;
-}
-
-html body #context-checkbox[data-checked="false"]::before,
-html body #context-checkbox:not([data-checked="true"])::before,
-html body #language-checkbox[data-checked="false"]::before,
-html body #language-checkbox:not([data-checked="true"])::before,
-body #context-checkbox[data-checked="false"]::before,
-body #context-checkbox:not([data-checked="true"])::before,
-body #language-checkbox[data-checked="false"]::before,
-body #language-checkbox:not([data-checked="true"])::before,
-#context-checkbox[data-checked="false"]::before,
-#context-checkbox:not([data-checked="true"])::before,
-#language-checkbox[data-checked="false"]::before,
-#language-checkbox:not([data-checked="true"])::before {
-  transform: translateX(0) !important;
-  background-color: white !important;
-}
-
 /* Hover state */
-html body #context-checkbox:hover,
-html body #language-checkbox:hover,
-body #context-checkbox:hover,
-body #language-checkbox:hover,
 #context-checkbox:hover,
 #language-checkbox:hover {
   background-color: #aaa !important;
@@ -249,26 +181,12 @@ body #language-checkbox:hover,
   transform: scale(1.02) !important;
 }
 
-/* Focus state - remove colored outlines */
-html body #context-checkbox:focus,
-html body #language-checkbox:focus,
-body #context-checkbox:focus,
-body #language-checkbox:focus,
+/* Focus state */
 #context-checkbox:focus,
 #language-checkbox:focus {
   outline: 2px solid #333 !important;
   outline-offset: 2px !important;
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Active/pressed state */
-html body #context-checkbox:active,
-html body #language-checkbox:active,
-body #context-checkbox:active,
-body #language-checkbox:active,
-#context-checkbox:active,
-#language-checkbox:active {
-  transform: scale(0.98) !important;
 }
 
 /* Container styling */
@@ -286,60 +204,6 @@ body #language-checkbox:active,
   font-size: 14px !important;
   font-weight: 500 !important;
   color: #333 !important;
-}
-
-/* Make the entire container clickable */
-.checkbox-container:hover #context-checkbox,
-.checkbox-container:hover #language-checkbox {
-  background-color: #aaa !important;
-  border-color: #999 !important;
-}
-
-/* Disabled state (optional) */
-#context-checkbox.disabled,
-#language-checkbox.disabled {
-  opacity: 0.5 !important;
-  cursor: not-allowed !important;
-  pointer-events: none !important;
-}
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-  html body #context-checkbox,
-  html body #language-checkbox,
-  body #context-checkbox,
-  body #language-checkbox,
-  #context-checkbox,
-  #language-checkbox {
-    width: 44px !important;
-    height: 22px !important;
-    border-radius: 11px !important;
-  }
-  
-  html body #context-checkbox::before,
-  html body #language-checkbox::before,
-  body #context-checkbox::before,
-  body #language-checkbox::before,
-  #context-checkbox::before,
-  #language-checkbox::before {
-    width: 14px !important;
-    height: 14px !important;
-    top: 2px !important;
-    left: 2px !important;
-  }
-  
-  html body #context-checkbox[data-checked="true"]::before,
-  html body #language-checkbox[data-checked="true"]::before,
-  body #context-checkbox[data-checked="true"]::before,
-  body #language-checkbox[data-checked="true"]::before,
-  #context-checkbox[data-checked="true"]::before,
-  #language-checkbox[data-checked="true"]::before {
-    transform: translateX(22px) !important;
-  }
-  
-  .checkbox-label {
-    font-size: 13px !important;
-  }
 }
 
 /* Image URL container styling */
@@ -424,10 +288,6 @@ body #language-checkbox:active,
   color: #1a1a1a !important;
 }
 
-.article-content em {
-  font-style: italic !important;
-}
-
 .article-content a {
   color: #007bff !important;
   text-decoration: underline !important;
@@ -446,98 +306,9 @@ body #language-checkbox:active,
   color: #555 !important;
 }
 
+/* Mobile menu styling */
 .mobile-menu {
-    display: none;
-}
-
-.mobile-menu.open {
-    display: block;
-}
-  
-.menu-icon {
-    font-family: 'Material Icons', sans-serif;
-    font-size: 24px;
-    font-weight: normal;
-    font-style: normal;
-    line-height: 1;
-}
-
-.settings-close-button {
-    background: none !important;
-    border: none !important;
-    font-size: 24px !important;
-    font-weight: normal !important;
-    font-style: normal !important;
-    line-height: 1 !important;
-    cursor: pointer !important;
-    color: #000000 !important;
-    padding: 0 !important;
-}
-
-.settings-close-button::before {
-    content: none !important;
-}
-
-.settings-close-button {
-    font-family: 'Font Awesome 6 Free' !important;
-}
-
-.settings-close-button::after {
-    content: '\f00d' !important;
-    font-weight: 900 !important;
-}
-
-/* Updated modal-open class to preserve scroll position and keep nav visible */
-body.modal-open {
-  overflow: hidden !important;
-  position: relative !important;
-}
-
-/* Remove all the complex footer overrides - not needed anymore */
-
-/* Ensure nav header stays visible when modal is open */
-body.modal-open nav,
-body.modal-open .nav-header,
-body.modal-open .navbar,
-body.modal-open header {
-  position: relative !important;
-  z-index: 9998 !important;
-}
-
-/* CRITICAL: Boost navigation-header with MAXIMUM specificity */
-html body .navigation-header,
-html body div.navigation-header,
-body .navigation-header,
-div.navigation-header,
-.navigation-header {
-  z-index: 99998 !important;
-  position: sticky !important;
-}
-
-/* When modal is open, keep navigation-header high with maximum specificity */
-html body.modal-open .navigation-header,
-html body.modal-open div.navigation-header,
-body.modal-open .navigation-header,
-body.modal-open div.navigation-header {
-  z-index: 99998 !important;
-  position: sticky !important;
-}
-
-/* Ensure burger menu stays above everything including footer */
-.burger-menu,
-.menu-icon {
-  z-index: 10000 !important;
-  position: relative !important;
-}
-
-body.modal-open .burger-menu,
-body.modal-open .menu-icon {
-  z-index: 10000 !important;
-  position: relative !important;
-}
-
-/* Ensure the panels themselves can scroll and stay above footer */
-.mobile-menu {
+  display: none;
   overflow-y: auto !important;
   max-height: 100vh !important;
   padding-bottom: 50px !important;
@@ -545,6 +316,7 @@ body.modal-open .menu-icon {
   position: fixed !important;
 }
 
+/* Settings panel styling */
 #settings-panel {
   overflow-y: auto !important;
   max-height: 100vh !important;
@@ -553,70 +325,45 @@ body.modal-open .menu-icon {
   position: fixed !important;
 }
 
-/* Settings overlay should also be above footer */
 .settings-overlay {
   z-index: 99998 !important;
   position: fixed !important;
 }
 
-/* Ensure burger menu stays above everything including footer */
+/* Navigation and burger menu z-index */
+.navigation-header {
+  z-index: 99998 !important;
+  position: sticky !important;
+}
+
 .burger-menu,
 .menu-icon {
   z-index: 100000 !important;
   position: relative !important;
 }
 
-body.modal-open .burger-menu,
-body.modal-open .menu-icon {
-  z-index: 100000 !important;
+/* Modal state */
+body.modal-open {
+  overflow: hidden !important;
   position: relative !important;
 }
 
-@media (max-width: 478px) {
-  .mobile-menu {
-    max-height: calc(100vh - 60px) !important;
-    padding-bottom: 80px !important;
-    z-index: 99999 !important;
-    position: fixed !important;
-  }
-  
-  #settings-panel {
-    max-height: calc(100vh - 60px) !important;
-    padding-bottom: 80px !important;
-    z-index: 99999 !important;
-    position: fixed !important;
-  }
-  
-  .settings-overlay {
-    z-index: 99998 !important;
-    position: fixed !important;
-  }
-}
-
-/* Country filtering - hidden elements */
+/* Country filtering */
 [data-country-id].country-filtered,
 [data-region-country-id].country-filtered {
   display: none !important;
 }
 
 /* Country Filter Dropdown Styling */
-.country-filter-dropdown,
-select.country-filter-dropdown,
-select[id*="country-filter"],
-select[class*="country-filter"] {
+.country-filter-dropdown {
   height: 40px !important;
   width: auto !important;
-  min-width: auto !important;
-  max-width: none !important;
   border: 1px solid #b3c1d5 !important;
   border-radius: 4px !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   font-size: 14px !important;
-  line-height: 1.15 !important;
   font-weight: 500 !important;
   color: #202939 !important;
-  text-align: left !important;
-  white-space: nowrap !important;
   padding: 0 5px 0 40px !important;
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
@@ -627,12 +374,6 @@ select[class*="country-filter"] {
   background-position: 12px center !important;
   background-size: 18px 18px !important;
   cursor: pointer !important;
-  box-sizing: border-box !important;
-  vertical-align: baseline !important;
-  display: inline-block !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  background-clip: padding-box !important;
   z-index: 1 !important;
 }
 
@@ -658,27 +399,4 @@ select[class*="country-filter"] {
   background-repeat: no-repeat !important;
   background-position: 12px center !important;
   background-size: 18px 18px !important;
-}
-
-div[style*="position: relative"][style*="z-index: 1"] {
-  z-index: 1 !important;
-  isolation: isolate !important;
-}
-
-.country-filter-dropdown:focus,
-.country-filter-dropdown:active,
-.country-filter-dropdown:hover,
-select.country-filter-dropdown:focus,
-select.country-filter-dropdown:active,
-select.country-filter-dropdown:hover,
-select[id*="country-filter"]:focus,
-select[id*="country-filter"]:active,
-select[id*="country-filter"]:hover,
-select[class*="country-filter"]:focus,
-select[class*="country-filter"]:active,
-select[class*="country-filter"]:hover {
-  outline: none !important;
-  box-shadow: none !important;
-  border-color: #b3c1d5 !important;
-  background-color: inherit !important;
 }
