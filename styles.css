@@ -181,12 +181,27 @@
   transform: scale(1.02) !important;
 }
 
-/* Focus state */
-#context-checkbox:focus,
-#language-checkbox:focus {
-  outline: 2px solid #333 !important;
-  outline-offset: 2px !important;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1) !important;
+/* Settings close button styling */
+.settings-close-button {
+  background: none !important;
+  border: none !important;
+  font-size: 24px !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  color: #000000 !important;
+  padding: 0 !important;
+  font-family: 'Font Awesome 6 Free' !important;
+}
+
+.settings-close-button::before {
+  content: none !important;
+}
+
+.settings-close-button::after {
+  content: '\f00d' !important;
+  font-weight: 900 !important;
 }
 
 /* Container styling */
