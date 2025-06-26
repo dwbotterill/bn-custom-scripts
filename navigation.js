@@ -189,30 +189,25 @@
   function addEventHandlers() {
     removeEventHandlers();
     
-    // Close button handler - try multiple selectors
-    var closeButton = document.querySelector('.settings-close-button') ||
-                      document.querySelector('[class*="close"]') ||
-                      document.querySelector('[data-close="settings"]') ||
-                      document.querySelector('#settings-close');
+    // Close button handler - specifically for .settings-close-button
+    var closeButton = document.querySelector('.settings-close-button');
     
     if (closeButton) {
-      var closeButtonContainer = closeButton.closest('.settings-close-wrapper') || 
-                                closeButton.closest('[class*="close"]') || 
-                                closeButton.parentNode;
+      closeButtonHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closePanel();
+      };
       
-      if (closeButtonContainer) {
-        closeButtonHandler = function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          closePanel();
-        };
-        
+      // Add click handler directly to the button
+      closeButton.addEventListener('click', closeButtonHandler);
+      closeButton.style.cursor = 'pointer';
+      
+      // Also try parent container if it exists
+      var closeButtonContainer = closeButton.closest('.settings-close-wrapper') || closeButton.parentNode;
+      if (closeButtonContainer && closeButtonContainer !== closeButton) {
         closeButtonContainer.addEventListener('click', closeButtonHandler);
         closeButtonContainer.style.cursor = 'pointer';
-        
-        // Also add directly to the button itself
-        closeButton.addEventListener('click', closeButtonHandler);
-        closeButton.style.cursor = 'pointer';
       }
     }
 
@@ -255,20 +250,15 @@
 
   function removeEventHandlers() {
     if (closeButtonHandler) {
-      var closeButton = document.querySelector('.settings-close-button') ||
-                        document.querySelector('[class*="close"]') ||
-                        document.querySelector('[data-close="settings"]') ||
-                        document.querySelector('#settings-close');
+      var closeButton = document.querySelector('.settings-close-button');
       
       if (closeButton) {
-        var closeButtonContainer = closeButton.closest('.settings-close-wrapper') || 
-                                  closeButton.closest('[class*="close"]') || 
-                                  closeButton.parentNode;
+        closeButton.removeEventListener('click', closeButtonHandler);
         
-        if (closeButtonContainer) {
+        var closeButtonContainer = closeButton.closest('.settings-close-wrapper') || closeButton.parentNode;
+        if (closeButtonContainer && closeButtonContainer !== closeButton) {
           closeButtonContainer.removeEventListener('click', closeButtonHandler);
         }
-        closeButton.removeEventListener('click', closeButtonHandler);
       }
       closeButtonHandler = null;
     }
