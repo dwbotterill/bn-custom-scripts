@@ -397,7 +397,7 @@
       });
   }
   
-  // UPDATED: Apply filter to both articles and regions, regardless of their current visibility status
+  // ENHANCED: More robust filtering that works with other filter systems
   function applyCountryFilter(countryId) {
     // Get ALL articles and regions (don't filter by Webflow visibility here)
     var allArticles = Array.from(document.querySelectorAll('[data-country-id]:not(option)'));
@@ -406,14 +406,18 @@
     log(`Filter: Found ${allArticles.length} articles and ${allRegions.length} regions for country ID ${countryId}`);
     
     if (!countryId) {
-      // Show all articles and regions
+      // Show all articles and regions by removing our filter
       allArticles.forEach(function(article) {
         article.classList.remove('country-filtered');
-        article.style.display = '';
+        if (article.style.display === 'none' && article.classList.contains('country-filtered')) {
+          article.style.display = '';
+        }
       });
       allRegions.forEach(function(region) {
         region.classList.remove('country-filtered');
-        region.style.display = '';
+        if (region.style.display === 'none' && region.classList.contains('country-filtered')) {
+          region.style.display = '';
+        }
       });
       return;
     }
@@ -426,8 +430,12 @@
       var articleCountryId = article.getAttribute('data-country-id');
       if (articleCountryId === countryId) {
         article.classList.remove('country-filtered');
-        article.style.display = '';
-        visibleArticles++;
+        // Only show if not hidden by other filters (like Webflow category filters)
+        var isHiddenByOtherFilters = article.style.display === 'none' && !article.classList.contains('country-filtered');
+        if (!isHiddenByOtherFilters) {
+          article.style.display = '';
+          visibleArticles++;
+        }
       } else {
         article.classList.add('country-filtered');
         article.style.display = 'none';
@@ -440,8 +448,12 @@
       var regionCountryId = region.getAttribute('data-region-country-id');
       if (regionCountryId === countryId) {
         region.classList.remove('country-filtered');
-        region.style.display = '';
-        visibleRegions++;
+        // Only show if not hidden by other filters
+        var isHiddenByOtherFilters = region.style.display === 'none' && !region.classList.contains('country-filtered');
+        if (!isHiddenByOtherFilters) {
+          region.style.display = '';
+          visibleRegions++;
+        }
       } else {
         region.classList.add('country-filtered');
         region.style.display = 'none';
@@ -517,13 +529,12 @@
     populateCountryFilter();
   }
   
-  // COMPLETELY REWRITTEN: Safe observer that won't cause loops
+  // IMPROVED: Much more conservative observer to prevent conflicts
   function createWebflowWatcher() {
     log('🔍 Setting up Webflow filter watcher');
     
-    // Track what we've already seen to prevent duplicate processing
-    var lastKnownVisibleArticles = new Set();
     var debounceTimeout;
+    var lastFilterTime = 0;
     
     function checkForChanges() {
       if (isPopulating) {
@@ -531,42 +542,58 @@
         return;
       }
       
-      // SIMPLIFIED: Just refresh when Webflow filters change, don't try to be too smart
-      log('🔄 Detected potential Webflow filter change, refreshing country filter');
-      populateCountryFilter();
+      var now = Date.now();
+      if (now - lastFilterTime < 2000) {
+        debugLog('Skipping - too soon since last filter');
+        return;
+      }
+      
+      lastFilterTime = now;
+      log('🔄 Detected potential Webflow filter change, reapplying country filter');
+      
+      // Instead of full repopulation, just reapply current filter
+      var selects = document.querySelectorAll('.country-filter-dropdown');
+      if (selects.length > 0 && selects[0].value) {
+        var selectedOption = selects[0].querySelector('option[value="' + selects[0].value + '"]');
+        if (selectedOption) {
+          var countryId = selectedOption.getAttribute('data-country-id');
+          log('Reapplying filter for country ID:', countryId);
+          applyCountryFilter(countryId);
+        }
+      }
     }
     
     function debouncedCheck() {
       clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(checkForChanges, 1000); // 1 second debounce
+      debounceTimeout = setTimeout(checkForChanges, 1500); // 1.5 second debounce
     }
     
-    // Create new observer with very specific targeting
+    // Much more conservative observer - only watch for Webflow-specific changes
     observerInstance = new MutationObserver(function(mutations) {
       if (isPopulating) {
-        return; // Don't process during population
+        return;
       }
       
-      var relevantChange = false;
+      var webflowChange = false;
       
       mutations.forEach(function(mutation) {
-        // Only care about style and class changes that might affect visibility
-        if (mutation.type === 'attributes' && 
-            (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
           var target = mutation.target;
           
-          // Only trigger if the changed element has country data or is a parent container
+          // Only trigger for elements that might be filtered by Webflow
           if (target && target.nodeType === 1) {
-            if (target.hasAttribute('data-country-id') || 
-                target.querySelector('[data-country-id]')) {
-              relevantChange = true;
+            var hasCountryData = target.hasAttribute('data-country-id') || target.hasAttribute('data-region-country-id');
+            var isCollectionItem = target.classList && target.classList.contains('w-dyn-item');
+            
+            if (hasCountryData && isCollectionItem) {
+              debugLog('Webflow collection item style change detected');
+              webflowChange = true;
             }
           }
         }
       });
       
-      if (relevantChange) {
-        debugLog('Relevant DOM change detected');
+      if (webflowChange) {
         debouncedCheck();
       }
     });
@@ -595,8 +622,17 @@
         log('📡 Webflow.push event detected');
         if (!isPopulating) {
           setTimeout(function() {
-            populateCountryFilter();
-          }, 500);
+            // Reapply current country filter instead of full repopulation
+            var selects = document.querySelectorAll('.country-filter-dropdown');
+            if (selects.length > 0 && selects[0].value) {
+              var selectedOption = selects[0].querySelector('option[value="' + selects[0].value + '"]');
+              if (selectedOption) {
+                var countryId = selectedOption.getAttribute('data-country-id');
+                log('Reapplying country filter after Webflow event');
+                applyCountryFilter(countryId);
+              }
+            }
+          }, 750);
         }
       });
     }
