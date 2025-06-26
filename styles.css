@@ -504,6 +504,18 @@ body.modal-open header {
   z-index: 9998 !important;
 }
 
+/* CRITICAL: Boost navigation-header to create proper stacking context */
+.navigation-header {
+  z-index: 99998 !important;
+  position: relative !important;
+}
+
+/* When modal is open, keep navigation-header high */
+body.modal-open .navigation-header {
+  z-index: 99998 !important;
+  position: relative !important;
+}
+
 /* Ensure burger menu stays above everything including footer */
 .burger-menu,
 .menu-icon {
