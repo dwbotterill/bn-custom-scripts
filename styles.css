@@ -504,14 +504,21 @@ body.modal-open header {
   z-index: 9998 !important;
 }
 
-/* CRITICAL: Boost navigation-header to create proper stacking context */
+/* CRITICAL: Boost navigation-header with MAXIMUM specificity */
+html body .navigation-header,
+html body div.navigation-header,
+body .navigation-header,
+div.navigation-header,
 .navigation-header {
   z-index: 99998 !important;
   position: sticky !important;
 }
 
-/* When modal is open, keep navigation-header high */
-body.modal-open .navigation-header {
+/* When modal is open, keep navigation-header high with maximum specificity */
+html body.modal-open .navigation-header,
+html body.modal-open div.navigation-header,
+body.modal-open .navigation-header,
+body.modal-open div.navigation-header {
   z-index: 99998 !important;
   position: sticky !important;
 }
