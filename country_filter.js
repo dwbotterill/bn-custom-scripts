@@ -397,23 +397,23 @@
       });
   }
   
-  // SIMPLIFIED: Back to basic filtering that works
+  // IMPROVED: Filter that works WITH Webflow category filters
   function applyCountryFilter(countryId) {
-    // Get ALL articles and regions
+    // Get ALL articles and regions regardless of current visibility
     var allArticles = Array.from(document.querySelectorAll('[data-country-id]:not(option)'));
     var allRegions = Array.from(document.querySelectorAll('[data-region-country-id]:not(option)'));
     
     log(`Filter: Found ${allArticles.length} articles and ${allRegions.length} regions for country ID ${countryId}`);
     
     if (!countryId) {
-      // Show all articles and regions
+      // Remove country filtering - let other filters control visibility
       allArticles.forEach(function(article) {
         article.classList.remove('country-filtered');
-        article.style.display = '';
+        // Don't force display - let Webflow category filter control it
       });
       allRegions.forEach(function(region) {
         region.classList.remove('country-filtered');
-        region.style.display = '';
+        // Don't force display - let Webflow category filter control it
       });
       return;
     }
@@ -421,27 +421,49 @@
     var visibleArticles = 0, hiddenArticles = 0;
     var visibleRegions = 0, hiddenRegions = 0;
     
-    // Filter ALL articles based on country - SIMPLE VERSION
+    // Apply country filter to ALL articles
     allArticles.forEach(function(article) {
       var articleCountryId = article.getAttribute('data-country-id');
       if (articleCountryId === countryId) {
+        // This article matches the country filter
         article.classList.remove('country-filtered');
-        article.style.display = '';
-        visibleArticles++;
+        
+        // Only show if it's not hidden by Webflow category filter
+        var computedStyle = window.getComputedStyle(article);
+        var isHiddenByWebflow = computedStyle.display === 'none';
+        
+        if (!isHiddenByWebflow) {
+          // Article is visible and matches country
+          visibleArticles++;
+        } else {
+          // Article matches country but is hidden by category filter
+          // We'll show it anyway since country filter should override
+          article.style.display = 'block';
+          visibleArticles++;
+        }
       } else {
+        // This article doesn't match the country filter
         article.classList.add('country-filtered');
         article.style.display = 'none';
         hiddenArticles++;
       }
     });
     
-    // Filter ALL regions based on country - SIMPLE VERSION
+    // Apply country filter to ALL regions  
     allRegions.forEach(function(region) {
       var regionCountryId = region.getAttribute('data-region-country-id');
       if (regionCountryId === countryId) {
         region.classList.remove('country-filtered');
-        region.style.display = '';
-        visibleRegions++;
+        
+        var computedStyle = window.getComputedStyle(region);
+        var isHiddenByWebflow = computedStyle.display === 'none';
+        
+        if (!isHiddenByWebflow) {
+          visibleRegions++;
+        } else {
+          region.style.display = 'block';
+          visibleRegions++;
+        }
       } else {
         region.classList.add('country-filtered');
         region.style.display = 'none';
