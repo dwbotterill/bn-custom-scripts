@@ -169,8 +169,8 @@
         var mutation = mutations[i];
         if (mutation.type === 'childList') {
           for (var j = 0; j < mutation.addedNodes.length; j++) {
-            var node = mutations[j].addedNodes[j];
-            if (node.nodeType === 1) {
+            var node = mutation.addedNodes[j]; // FIXED: was mutations[j].addedNodes[j]
+            if (node && node.nodeType === 1) { // FIXED: added null check
               if ((node.classList && (node.classList.contains('article-content') || node.classList.contains('image-url'))) ||
                   (node.querySelector && (node.querySelector('.article-content') || node.querySelector('.image-url'))) ||
                   (node.innerHTML && node.innerHTML.indexOf('<context') !== -1)) {
