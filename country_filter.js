@@ -690,12 +690,24 @@
   window.refreshCountries = refreshCountryCache;
   window.applyCountryFilter = applyCountryFilter;
   
-  // Enhanced debug function with sample data inspection
+  // Enhanced debug function with deeper DOM inspection
   window.debugCountry = function() {
     var selects = document.querySelectorAll('.country-filter-dropdown');
     var articles = document.querySelectorAll('[data-country-id]:not(option)');
     var regions = document.querySelectorAll('[data-region-country-id]:not(option)');
     var visibleArticles = Array.from(articles).filter(isElementVisibleInWebflow);
+    
+    // Let's also look for articles that might be hidden in different ways
+    var allPossibleArticles = document.querySelectorAll('[data-country-id]');
+    var hiddenArticles = Array.from(allPossibleArticles).filter(function(el) {
+      return el.tagName !== 'OPTION' && window.getComputedStyle(el).display === 'none';
+    });
+    
+    // Look for Webflow collection items that might contain country data
+    var collectionItems = document.querySelectorAll('.w-dyn-item');
+    var collectionItemsWithCountry = Array.from(collectionItems).filter(function(item) {
+      return item.hasAttribute('data-country-id') || item.querySelector('[data-country-id]');
+    });
     
     console.log('🔍 COUNTRY FILTER DEBUG:', {
       isPopulating: isPopulating,
@@ -708,7 +720,11 @@
       firstDropdownValue: selects[0] ? selects[0].value : 'none',
       firstDropdownOptions: selects[0] ? selects[0].options.length : 0,
       pageURL: window.location.href,
-      urlCountryParam: new URLSearchParams(window.location.search).get('country')
+      urlCountryParam: new URLSearchParams(window.location.search).get('country'),
+      allPossibleArticles: allPossibleArticles.length,
+      hiddenArticles: hiddenArticles.length,
+      collectionItems: collectionItems.length,
+      collectionItemsWithCountry: collectionItemsWithCountry.length
     });
     
     // Show sample articles with their country IDs
@@ -719,6 +735,34 @@
           className: article.className,
           display: window.getComputedStyle(article).display,
           tagName: article.tagName
+        };
+      }));
+    }
+    
+    // Show hidden articles if any
+    if (hiddenArticles.length > 0) {
+      console.log('👻 Hidden articles found:', hiddenArticles.slice(0, 5).map(function(article) {
+        return {
+          countryId: article.getAttribute('data-country-id'),
+          className: article.className,
+          display: window.getComputedStyle(article).display,
+          tagName: article.tagName,
+          parentClassName: article.parentElement ? article.parentElement.className : 'no parent'
+        };
+      }));
+    }
+    
+    // Show collection items with country data
+    if (collectionItemsWithCountry.length > 0) {
+      console.log('📦 Collection items with country:', collectionItemsWithCountry.slice(0, 5).map(function(item) {
+        var countryEl = item.querySelector('[data-country-id]') || item;
+        return {
+          countryId: countryEl.getAttribute('data-country-id'),
+          className: item.className,
+          display: window.getComputedStyle(item).display,
+          tagName: item.tagName,
+          hasCountryAttr: item.hasAttribute('data-country-id'),
+          hasCountryChild: !!item.querySelector('[data-country-id]')
         };
       }));
     }
@@ -753,6 +797,14 @@
       countryDistribution[id] = (countryDistribution[id] || 0) + 1;
     });
     console.log('📊 Article country ID distribution:', countryDistribution);
+    
+    // Show hidden articles distribution
+    var hiddenCountryDistribution = {};
+    hiddenArticles.forEach(function(article) {
+      var id = article.getAttribute('data-country-id');
+      hiddenCountryDistribution[id] = (hiddenCountryDistribution[id] || 0) + 1;
+    });
+    console.log('👻 Hidden article country ID distribution:', hiddenCountryDistribution);
   };
   
   // Force country selector z-index
