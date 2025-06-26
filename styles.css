@@ -493,6 +493,8 @@ body.modal-open {
   position: relative !important;
 }
 
+/* Remove all the complex footer overrides - not needed anymore */
+
 /* Ensure nav header stays visible when modal is open */
 body.modal-open nav,
 body.modal-open .nav-header,
@@ -502,35 +504,73 @@ body.modal-open header {
   z-index: 9998 !important;
 }
 
-/* Ensure burger menu stays above everything */
-body.modal-open .burger-menu,
-body.modal-open .menu-icon {
+/* Ensure burger menu stays above everything including footer */
+.burger-menu,
+.menu-icon {
+  z-index: 10000 !important;
   position: relative !important;
-  z-index: 9999 !important;
 }
 
-/* Ensure the panels themselves can scroll */
+body.modal-open .burger-menu,
+body.modal-open .menu-icon {
+  z-index: 10000 !important;
+  position: relative !important;
+}
+
+/* Ensure the panels themselves can scroll and stay above footer */
 .mobile-menu {
   overflow-y: auto !important;
   max-height: 100vh !important;
   padding-bottom: 50px !important;
+  z-index: 99999 !important;
+  position: fixed !important;
 }
 
 #settings-panel {
   overflow-y: auto !important;
   max-height: 100vh !important;
   padding-bottom: 50px !important;
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
+/* Settings overlay should also be above footer */
+.settings-overlay {
+  z-index: 99998 !important;
+  position: fixed !important;
+}
+
+/* Ensure burger menu stays above everything including footer */
+.burger-menu,
+.menu-icon {
+  z-index: 100000 !important;
+  position: relative !important;
+}
+
+body.modal-open .burger-menu,
+body.modal-open .menu-icon {
+  z-index: 100000 !important;
+  position: relative !important;
 }
 
 @media (max-width: 478px) {
   .mobile-menu {
     max-height: calc(100vh - 60px) !important;
     padding-bottom: 80px !important;
+    z-index: 99999 !important;
+    position: fixed !important;
   }
   
   #settings-panel {
     max-height: calc(100vh - 60px) !important;
     padding-bottom: 80px !important;
+    z-index: 99999 !important;
+    position: fixed !important;
+  }
+  
+  .settings-overlay {
+    z-index: 99998 !important;
+    position: fixed !important;
   }
 }
 
