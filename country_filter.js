@@ -1,4 +1,4 @@
-// Country Filter System with Debug Logging
+// Country Filter System with Webflow Filtering Support
 (function() {
   'use strict';
   
@@ -204,6 +204,31 @@
       resizeSelectToContent(select);
     });
   }
+
+  // NEW: Check if element is currently visible (not hidden by Webflow filtering)
+  function isElementVisibleInWebflow(element) {
+    // Check if element itself is hidden
+    if (element.style.display === 'none') return false;
+    
+    // Check if element has been filtered out by Webflow
+    if (element.classList.contains('w-condition-invisible')) return false;
+    
+    // Check computed style
+    var computedStyle = window.getComputedStyle(element);
+    if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') return false;
+    
+    // Check if parent containers are hidden by Webflow
+    var parent = element.parentElement;
+    while (parent && parent !== document.body) {
+      var parentStyle = window.getComputedStyle(parent);
+      if (parentStyle.display === 'none' || parent.classList.contains('w-condition-invisible')) {
+        return false;
+      }
+      parent = parent.parentElement;
+    }
+    
+    return true;
+  }
  
   function populateCountryFilter() {
     var selects = document.querySelectorAll('.country-filter-dropdown');
@@ -230,7 +255,30 @@
           }
         }
         
-        countriesArray.sort(function(a, b) {
+        // NEW: Get countries that are actually present in currently visible articles
+        var visibleArticles = Array.from(document.querySelectorAll('[data-country-id]:not(option)'))
+          .filter(isElementVisibleInWebflow);
+        
+        var visibleCountryIds = new Set(
+          visibleArticles.map(function(article) {
+            return article.getAttribute('data-country-id');
+          }).filter(Boolean)
+        );
+        
+        log(`Found ${visibleCountryIds.size} countries in ${visibleArticles.length} visible articles`);
+        
+        // Filter countries to only show those present in visible articles
+        var availableCountries = countriesArray.filter(function(country) {
+          return visibleCountryIds.has(country.database_id || country.id);
+        });
+        
+        // If no countries found in visible articles, show all (fallback)
+        if (availableCountries.length === 0) {
+          log('No countries found in visible articles, showing all');
+          availableCountries = countriesArray;
+        }
+        
+        availableCountries.sort(function(a, b) {
           var idA = parseInt(a.database_id || a.id);
           var idB = parseInt(b.database_id || b.id);
           return idA - idB;
@@ -239,7 +287,7 @@
         selects.forEach(function(select) {
           select.innerHTML = '';
           
-          countriesArray.forEach(function(country) {
+          availableCountries.forEach(function(country) {
             if (country && country.code && country.name) {
               var option = document.createElement('option');
               option.value = country.code;
@@ -255,8 +303,16 @@
         var savedCountry = localStorage.getItem(SELECTED_COUNTRY_KEY);
         var selectedCountry = countryFromUrl || savedCountry;
         
-        if (!selectedCountry && countriesArray.length > 0) {
-          selectedCountry = countriesArray[0].code;
+        // NEW: Verify selected country is available in current view
+        var selectedCountryAvailable = availableCountries.some(function(country) {
+          return country.code === selectedCountry;
+        });
+        
+        if (!selectedCountry || !selectedCountryAvailable) {
+          if (availableCountries.length > 0) {
+            selectedCountry = availableCountries[0].code;
+            log(`Auto-selected first available country: ${selectedCountry}`);
+          }
         }
         
         if (selectedCountry) {
@@ -298,18 +354,24 @@
       });
   }
   
+  // UPDATED: Apply filter only to currently visible articles
   function applyCountryFilter(countryId) {
-    var allArticles = document.querySelectorAll('[data-country-id]:not(option)');
-    var allRegions = document.querySelectorAll('[data-region-country-id]:not(option)');
+    // Get all articles, but only filter those visible in Webflow
+    var allArticles = Array.from(document.querySelectorAll('[data-country-id]:not(option)'));
+    var allRegions = Array.from(document.querySelectorAll('[data-region-country-id]:not(option)'));
     
-    log(`Filter: ${allArticles.length} articles, ${allRegions.length} regions for ID ${countryId}`);
+    var visibleArticles = allArticles.filter(isElementVisibleInWebflow);
+    var visibleRegions = allRegions.filter(isElementVisibleInWebflow);
+    
+    log(`Filter: ${visibleArticles.length}/${allArticles.length} visible articles, ${visibleRegions.length}/${allRegions.length} visible regions for ID ${countryId}`);
     
     if (!countryId) {
-      allArticles.forEach(function(article) {
+      // Show all visible articles
+      visibleArticles.forEach(function(article) {
         article.classList.remove('country-filtered');
         article.style.display = '';
       });
-      allRegions.forEach(function(region) {
+      visibleRegions.forEach(function(region) {
         region.classList.remove('country-filtered');
         region.style.display = '';
       });
@@ -318,7 +380,8 @@
     
     var visible = 0, hidden = 0;
     
-    allArticles.forEach(function(article) {
+    // Only filter articles that are currently visible in Webflow
+    visibleArticles.forEach(function(article) {
       var articleCountryId = article.getAttribute('data-country-id');
       if (articleCountryId === countryId) {
         article.classList.remove('country-filtered');
@@ -331,7 +394,7 @@
       }
     });
     
-    allRegions.forEach(function(region) {
+    visibleRegions.forEach(function(region) {
       var regionCountryId = region.getAttribute('data-region-country-id');
       if (regionCountryId === countryId) {
         region.classList.remove('country-filtered');
@@ -403,6 +466,53 @@
     populateCountryFilter();
   }
   
+  // NEW: Watch for Webflow filter changes
+  function watchWebflowFilters() {
+    // Create observer to watch for changes in article visibility
+    var observer = new MutationObserver(function(mutations) {
+      var shouldRefresh = false;
+      
+      mutations.forEach(function(mutation) {
+        if (mutation.type === 'attributes' && 
+            (mutation.attributeName === 'style' || 
+             mutation.attributeName === 'class')) {
+          var target = mutation.target;
+          if (target.hasAttribute && target.hasAttribute('data-country-id')) {
+            shouldRefresh = true;
+          }
+        }
+        
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1 && node.hasAttribute && node.hasAttribute('data-country-id')) {
+              shouldRefresh = true;
+            }
+          });
+        }
+      });
+      
+      if (shouldRefresh) {
+        log('Webflow filter detected, refreshing country options');
+        setTimeout(populateCountryFilter, 100);
+      }
+    });
+    
+    // Watch the entire document for changes
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+    
+    // Also watch for Webflow's filter events if available
+    if (window.Webflow && window.Webflow.push) {
+      window.Webflow.push(function() {
+        setTimeout(populateCountryFilter, 200);
+      });
+    }
+  }
+  
   var resizeTimeout;
   window.addEventListener('resize', function() {
     clearTimeout(resizeTimeout);
@@ -426,6 +536,7 @@
     
     populateCountryFilter();
     handleCountryChange();
+    watchWebflowFilters(); // NEW: Watch for Webflow changes
     setInterval(refreshCountryCache, CACHE_DURATION);
   }
   
@@ -445,7 +556,7 @@
   window.refreshCountries = refreshCountryCache;
   window.applyCountryFilter = applyCountryFilter;
   
-  // 🔧 FIXED: Force country selector z-index - EXCLUDING navigation-header
+  // Force country selector z-index
   window.forceCountrySelectorLowZIndex = function() {
     var selects = document.querySelectorAll('.country-filter-dropdown');
     
@@ -457,9 +568,7 @@
       var depth = 0;
       
       while (parent && depth < 5) {
-        // 🔧 CRITICAL FIX: Skip navigation-header to preserve its z-index!
         if (parent.classList && parent.classList.contains('navigation-header')) {
-          console.log('🚫 Skipping navigation-header - preserving z-index');
           parent = parent.parentNode;
           depth++;
           continue;
@@ -488,7 +597,6 @@
       overlay.style.setProperty('z-index', '1', 'important');
       
       var container = overlay.parentNode;
-      // 🔧 ALSO skip navigation-header for overlays
       if (container && !container.classList.contains('navigation-header')) {
         container.style.setProperty('z-index', '1', 'important');
         container.style.setProperty('isolation', 'isolate', 'important');
@@ -500,9 +608,11 @@
   window.debugCountry = function() {
     var selects = document.querySelectorAll('.country-filter-dropdown');
     var articles = document.querySelectorAll('[data-country-id]:not(option)');
+    var visibleArticles = Array.from(articles).filter(isElementVisibleInWebflow);
     console.log('Country Debug:', {
       dropdowns: selects.length,
-      articles: articles.length,
+      totalArticles: articles.length,
+      visibleArticles: visibleArticles.length,
       selectedCountry: localStorage.getItem(SELECTED_COUNTRY_KEY),
       firstDropdownValue: selects[0] ? selects[0].value : 'none'
     });
