@@ -397,30 +397,51 @@
       });
   }
   
-  // COMPLETELY REVISED: Store article data and work with Webflow's DOM manipulation
-  var articleDataCache = [];
-  
-  function cacheArticleData() {
-    // Cache article data when articles are visible (before Webflow hides them)
-    var articles = document.querySelectorAll('[data-country-id]:not(option)');
+  // CRITICAL: Cache articles immediately when script loads
+  function initializeArticleCache() {
+    // Try to cache articles multiple times to catch them before Webflow hides them
+    function attemptCache() {
+      var articles = document.querySelectorAll('[data-country-id]:not(option)');
+      
+      if (articles.length > 0 && articleDataCache.length === 0) {
+        log('📦 INITIAL CACHE: Found ' + articles.length + ' articles to cache');
+        
+        articleDataCache = Array.from(articles).map(function(article) {
+          return {
+            element: article,
+            countryId: article.getAttribute('data-country-id'),
+            originalParent: article.parentElement,
+            originalDisplay: article.style.display,
+            className: article.className,
+            id: article.id || 'article-' + Date.now() + '-' + Math.random()
+          };
+        });
+        
+        log('✅ INITIAL CACHE: Cached ' + articleDataCache.length + ' articles');
+        return true;
+      }
+      return false;
+    }
     
-    if (articles.length > 0 && articleDataCache.length === 0) {
-      log('📦 Caching article data for ' + articles.length + ' articles');
+    // Try immediately
+    if (!attemptCache()) {
+      // Try when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attemptCache);
+      } else {
+        setTimeout(attemptCache, 100);
+      }
       
-      articleDataCache = Array.from(articles).map(function(article) {
-        return {
-          element: article,
-          countryId: article.getAttribute('data-country-id'),
-          originalParent: article.parentElement,
-          originalDisplay: article.style.display,
-          className: article.className,
-          id: article.id || 'article-' + Date.now() + '-' + Math.random()
-        };
-      });
-      
-      log('✅ Cached ' + articleDataCache.length + ' articles');
+      // Try multiple times with delays to catch articles before Webflow hides them
+      setTimeout(attemptCache, 250);
+      setTimeout(attemptCache, 500);
+      setTimeout(attemptCache, 1000);
+      setTimeout(attemptCache, 2000);
     }
   }
+  
+  // Start caching immediately when script loads
+  initializeArticleCache();
   
   function applyCountryFilter(countryId) {
     // Always try to cache current articles first
