@@ -299,33 +299,18 @@
           }
         }
         
-        // Get countries that are actually present in currently visible articles
+        // FIXED: Always show all countries in dropdown regardless of visible articles
+        var availableCountries = countriesArray;
+        log(`Always showing all ${availableCountries.length} countries in dropdown`);
+        
+        // Just for debugging - check what articles/regions are present
         var allArticles = Array.from(document.querySelectorAll('[data-country-id]:not(option)'));
-        debugLog(`Found ${allArticles.length} total articles with country data`);
+        var allRegions = Array.from(document.querySelectorAll('[data-region-country-id]:not(option)'));
+        debugLog(`Found ${allArticles.length} articles and ${allRegions.length} regions with country data`);
         
         var visibleArticles = allArticles.filter(isElementVisibleInWebflow);
-        debugLog(`Found ${visibleArticles.length} visible articles after filtering`);
-        
-        var visibleCountryIds = new Set(
-          visibleArticles.map(function(article) {
-            var countryId = article.getAttribute('data-country-id');
-            return countryId;
-          }).filter(Boolean)
-        );
-        
-        log(`Found ${visibleCountryIds.size} unique countries in ${visibleArticles.length} visible articles`);
-        
-        // Filter countries to only show those present in visible articles
-        var availableCountries = countriesArray.filter(function(country) {
-          var countryDbId = country.database_id || country.id;
-          return visibleCountryIds.has(countryDbId);
-        });
-        
-        // If no countries found in visible articles, show all (fallback)
-        if (availableCountries.length === 0) {
-          log('⚠️ No countries found in visible articles, showing all');
-          availableCountries = countriesArray;
-        }
+        var visibleRegions = allRegions.filter(isElementVisibleInWebflow);
+        debugLog(`Found ${visibleArticles.length} visible articles and ${visibleRegions.length} visible regions after filtering`);
         
         log(`Showing ${availableCountries.length} countries in dropdown`);
         
@@ -355,15 +340,11 @@
         var savedCountry = localStorage.getItem(SELECTED_COUNTRY_KEY);
         var selectedCountry = countryFromUrl || savedCountry;
         
-        // Verify selected country is available in current view
-        var selectedCountryAvailable = availableCountries.some(function(country) {
-          return country.code === selectedCountry;
-        });
-        
-        if (!selectedCountry || !selectedCountryAvailable) {
+        // FIXED: Auto-select first country if none selected, regardless of visibility
+        if (!selectedCountry) {
           if (availableCountries.length > 0) {
             selectedCountry = availableCountries[0].code;
-            log(`Auto-selected first available country: ${selectedCountry}`);
+            log(`Auto-selected first country: ${selectedCountry}`);
           }
         }
         
@@ -416,55 +397,59 @@
       });
   }
   
-  // Apply filter only to currently visible articles
+  // UPDATED: Apply filter to both articles and regions, regardless of their current visibility status
   function applyCountryFilter(countryId) {
+    // Get ALL articles and regions (don't filter by Webflow visibility here)
     var allArticles = Array.from(document.querySelectorAll('[data-country-id]:not(option)'));
     var allRegions = Array.from(document.querySelectorAll('[data-region-country-id]:not(option)'));
     
-    var visibleArticles = allArticles.filter(isElementVisibleInWebflow);
-    var visibleRegions = allRegions.filter(isElementVisibleInWebflow);
-    
-    log(`Filter: ${visibleArticles.length}/${allArticles.length} visible articles, ${visibleRegions.length}/${allRegions.length} visible regions for ID ${countryId}`);
+    log(`Filter: Found ${allArticles.length} articles and ${allRegions.length} regions for country ID ${countryId}`);
     
     if (!countryId) {
-      visibleArticles.forEach(function(article) {
+      // Show all articles and regions
+      allArticles.forEach(function(article) {
         article.classList.remove('country-filtered');
         article.style.display = '';
       });
-      visibleRegions.forEach(function(region) {
+      allRegions.forEach(function(region) {
         region.classList.remove('country-filtered');
         region.style.display = '';
       });
       return;
     }
     
-    var visible = 0, hidden = 0;
+    var visibleArticles = 0, hiddenArticles = 0;
+    var visibleRegions = 0, hiddenRegions = 0;
     
-    visibleArticles.forEach(function(article) {
+    // Filter ALL articles based on country
+    allArticles.forEach(function(article) {
       var articleCountryId = article.getAttribute('data-country-id');
       if (articleCountryId === countryId) {
         article.classList.remove('country-filtered');
         article.style.display = '';
-        visible++;
+        visibleArticles++;
       } else {
         article.classList.add('country-filtered');
         article.style.display = 'none';
-        hidden++;
+        hiddenArticles++;
       }
     });
     
-    visibleRegions.forEach(function(region) {
+    // Filter ALL regions based on country
+    allRegions.forEach(function(region) {
       var regionCountryId = region.getAttribute('data-region-country-id');
       if (regionCountryId === countryId) {
         region.classList.remove('country-filtered');
         region.style.display = '';
+        visibleRegions++;
       } else {
         region.classList.add('country-filtered');
         region.style.display = 'none';
+        hiddenRegions++;
       }
     });
     
-    log(`Result: ${visible} visible, ${hidden} hidden`);
+    log(`Result: ${visibleArticles}/${allArticles.length} articles visible, ${visibleRegions}/${allRegions.length} regions visible`);
   }
   
   function handleCountryChange() {
@@ -546,24 +531,9 @@
         return;
       }
       
-      var currentVisible = Array.from(document.querySelectorAll('[data-country-id]:not(option)'))
-        .filter(isElementVisibleInWebflow)
-        .map(function(el) { return el.getAttribute('data-country-id'); });
-      
-      var currentVisibleSet = new Set(currentVisible);
-      
-      // Check if the visible articles have actually changed
-      var hasChanged = currentVisibleSet.size !== lastKnownVisibleArticles.size ||
-        !Array.from(currentVisibleSet).every(function(id) { return lastKnownVisibleArticles.has(id); });
-      
-      if (hasChanged) {
-        log('🔄 Article visibility changed, refreshing country options');
-        debugLog('Previous visible:', Array.from(lastKnownVisibleArticles));
-        debugLog('Current visible:', Array.from(currentVisibleSet));
-        
-        lastKnownVisibleArticles = currentVisibleSet;
-        populateCountryFilter();
-      }
+      // SIMPLIFIED: Just refresh when Webflow filters change, don't try to be too smart
+      log('🔄 Detected potential Webflow filter change, refreshing country filter');
+      populateCountryFilter();
     }
     
     function debouncedCheck() {
